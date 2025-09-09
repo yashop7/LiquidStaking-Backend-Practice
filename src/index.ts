@@ -1,38 +1,44 @@
-require('dotenv').config();
-import express from 'express';
-import { burnTokens, mintTokens, sendNativeTokens } from './mintTokens';
+require("dotenv").config();
+import express from "express";
+import { burnTokens, mintTokens, sendNativeTokens } from "./mintTokens";
 
 const app = express();
 
 //Trimmed Down version of Response from Helius Webhook
 // This is just for testing purpose
 const HELIUS_RESPONSE = {
-    "nativeTransfers": [
-      {
-        "amount": 1000000000,
-        "fromUserAccount": "2hM8rU9Cu7g3cSfC7C76t41sMcceWUgnxCgmjznMnwJc",
-        "toUserAccount": "RStK1PmXx5eC8GUceGe1iZeauzmr1yjggseWcP18cFE"
-      }
-    ],
-  };
+  nativeTransfers: [
+    {
+      amount: 1000000000,
+      fromUserAccount: "2hM8rU9Cu7g3cSfC7C76t41sMcceWUgnxCgmjznMnwJc",
+      toUserAccount: "2hM8rU9Cu7g3cSfC7C76t41sMcceWUgnxCgmjznMnwJc",
+    },
+  ],
+};
 
 // This is the vault address where the SOL will be sent
-const VAULT = "RStK1PmXx5eC8GUceGe1iZeauzmr1yjggseWcP18cFE";
+const VAULT = "2hM8rU9Cu7g3cSfC7C76t41sMcceWUgnxCgmjznMnwJc";
 
-
-app.post('/helius', async(req, res) => {
-    const incomingTxn = HELIUS_RESPONSE.nativeTransfers.find(x => x.fromUserAccount !== VAULT);
-    if (!incomingTxn) {
-      res.json({ message: 'message processed' });
-      return;
-    }
-    const fromAddress = incomingTxn.fromUserAccount;
-    const toAddress = VAULT;
-    const amount = incomingTxn.amount;
-    const type = "received_native_sol";
+app.get("/helius", async (req, res) => {
+  const incomingTxn = HELIUS_RESPONSE.nativeTransfers.find(
+    (x) => x.toUserAccount === VAULT
+  );
+  if (!incomingTxn) {
+    res.json({ message: "message processed" });
+    return;
+  }
+  const fromAddress = incomingTxn.fromUserAccount;
+  const toAddress = VAULT;
+  const amount = incomingTxn.amount;
+  const type = "received_native_sol";
+  try {
     // Now we need to mint tokens to these Address
-    await mintTokens(fromAddress, amount);
-  
+    // await mintTokens(toAddress, amount);
+    // Burning Tokens from out Address
+    // await burnTokens(amount);
+    //sending someone Native Token
+    await sendNativeTokens( toAddress, amount);
+    
     // if (type === "received_native_sol") {
     //     await mintTokens(fromAddress, toAddress, amount);
     // } else {
@@ -41,14 +47,16 @@ app.post('/helius', async(req, res) => {
     //     await sendNativeTokens(fromAddress, toAddress, amount);
     // }
 
-    res.send('Transaction successful');
+    res.send("Transaction successful");
+  } catch (err) {
+    console.error("Error processing transaction:", err);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
 app.listen(3000, () => {
-  console.log('Server is running on port 3000');
+  console.log("Server is running on port 3000");
 });
-
-
 
 // THIS IS THE Response FROM HELIUS API
 
